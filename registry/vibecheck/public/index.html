@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VibeCheck</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d1117;color:#c9d1d9;padding:2rem;max-width:800px;margin:0 auto}
+    h1{color:#f0f6fc;margin-bottom:0.25rem;font-size:1.5rem}
+    p{color:#8b949e;font-size:0.88rem;margin-bottom:1.5rem}
+    .card{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:1rem;margin-bottom:1rem}
+    .row{display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid #21262d;font-size:0.85rem}
+    .row:last-child{border-bottom:none}
+    .btn{padding:0.4rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:0.82rem;font-family:inherit}
+    .btn-primary{background:#238636;color:#fff}
+    .btn-primary:hover{background:#2ea043}
+    .btn-danger{background:#da3633;color:#fff}
+    .btn-sm{padding:0.25rem 0.6rem;font-size:0.75rem}
+    .badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.7rem}
+    .badge-ok{background:#0d3320;color:#3fb950}
+    .badge-warn{background:#3d1a1a;color:#f85149}
+    .badge-pending{background:#1a1a2e;color:#d29922}
+    pre{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:0.75rem;font-size:0.78rem;overflow-x:auto;margin-top:0.5rem;color:#8b949e}
+    select{padding:0.35rem;border-radius:4px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:0.82rem}
+    label{font-size:0.82rem;display:flex;align-items:center;gap:0.35rem;cursor:pointer}
+    .empty{text-align:center;padding:2rem;color:#484f58;font-size:0.85rem}
+    @media(max-width:600px){body{padding:1rem}}
+  </style>
+</head>
+<body>
+  <h1>🛡️ VibeCheck</h1>
+  <p>Malware scanner for AI-generated and vibe-coded repositories. Powered by ClamAV.</p>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+      <strong>Scan a Repository</strong>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <select id="repo-select"><option value="">Select repo...</option></select>
+        <button class="btn btn-primary btn-sm" onclick="runScan()">Scan</button>
+      </div>
+    </div>
+    <label><input type="checkbox" id="tracked-only" checked /> Tracked files only (skip node_modules, .git, etc.)</label>
+  </div>
+
+  <div id="results" class="card" style="display:none">
+    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+      <strong>Results</strong>
+      <span id="scan-status" class="badge badge-pending">Pending</span>
+    </div>
+    <div id="scan-summary"></div>
+    <div id="scan-details"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+      <strong>Scan History</strong>
+      <button class="btn btn-sm" onclick="loadHistory()">Refresh</button>
+    </div>
+    <div id="history-list"><div class="empty">No scans yet.</div></div>
+  </div>
+
+  <script>
+    let TOKEN = null;
+
+    async function auth() {
+      const r = await fetch('/api/auth/guest', { method: 'POST' });
+      const d = await r.json();
+      TOKEN = d.token;
+    }
+
+    async function api(path, opts = {}) {
+      if (!TOKEN) await auth();
+      const r = await fetch(path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', ...(TOKEN ? { 'Authorization': 'Bearer ' + TOKEN } : {}), ...(opts.headers || {}) }
+      });
+      if (r.status === 401) { TOKEN = null; await auth(); return api(path, opts); }
+      return r.json();
+    }
+
+    async function loadRepos() {
+      const sel = document.getElementById('repo-select');
+      sel.innerHTML = '<option value="">Loading...</option>';
+      const d = await api('/api/repos');
+      sel.innerHTML = '<option value="">Select repo...</option>';
+      (d.repos || []).forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.path;
+        opt.textContent = r.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function runScan() {
+      const target = document.getElementById('repo-select').value;
+      if (!target) return alert('Select a repo first.');
+      const tracked = document.getElementById('tracked-only').checked;
+      const results = document.getElementById('results');
+      const status = document.getElementById('scan-status');
+      results.style.display = 'block';
+      status.textContent = 'Scanning...';
+      status.className = 'badge badge-pending';
+
+      const d = await api('/api/scan', {
+        method: 'POST',
+        body: JSON.stringify({ target, tracked_only: tracked })
+      });
+
+      // Poll for results
+      const poll = setInterval(async () => {
+        const s = await api('/api/scan/' + d.scan_id);
+        if (s.status === 'done') {
+          clearInterval(poll);
+          status.textContent = s.infected.length + ' threats';
+          status.className = 'badge ' + (s.infected.length ? 'badge-warn' : 'badge-ok');
+          document.getElementById('scan-summary').innerHTML =
+            '<p style="font-size:0.85rem;margin-top:0.5rem">Scanned ' + (s.summary?.scanned || 0) + ' files · ' +
+            s.infected.length + ' infected · ' + (s.errors?.length || 0) + ' errors</p>';
+          document.getElementById('scan-details').innerHTML =
+            s.infected.length ? '<pre>' + s.infected.map(i => '⚠ ' + i.file + ' → ' + i.signature).join('\n') + '</pre>' : '';
+          loadHistory();
+        }
+      }, 2000);
+    }
+
+    async function loadHistory() {
+      const d = await api('/api/scans');
+      const list = document.getElementById('history-list');
+      if (!(d.scans || []).length) { list.innerHTML = '<div class="empty">No scans yet.</div>'; return; }
+      list.innerHTML = d.scans.map(s =>
+        '<div class="row">' +
+          '<span>' + (s.target || '').split('/').pop() + '</span>' +
+          '<span class="badge ' + (s.infected?.length ? 'badge-warn' : 'badge-ok') + '">' +
+            (s.infected?.length || 0) + ' threats</span>' +
+          '<span style="font-size:0.75rem;color:#555">' + (s.finished ? new Date(s.finished).toLocaleString() : '') + '</span>' +
+        '</div>'
+      ).join('');
+    }
+
+    auth().then(() => { loadRepos(); loadHistory(); });
+  </script>
+</body>
+</html>

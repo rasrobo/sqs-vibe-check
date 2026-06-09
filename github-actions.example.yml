@@ -1,0 +1,26 @@
+name: VibeCheck Malware Scan
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  vibecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update ClamAV signatures
+        run: |
+          docker run --rm -v clamav-db:/var/lib/clamav \
+            clamav/clamav:latest freshclam --quiet
+
+      - name: Scan repo (fails pipeline on infection)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/scan:ro \
+            -v clamav-db:/var/lib/clamav \
+            clamav/clamav:latest \
+            clamscan -r --infected --no-summary /scan

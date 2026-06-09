@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# vibecheck-scan — Standalone malware scanner using ClamAV
+# Usage: ./vibecheck-scan [target_directory]
+#   Default target: /opt/git (or SCAN_ROOT env var)
+set -euo pipefail
+
+TARGET="${1:-${SCAN_ROOT:-/opt/git}}"
+IMAGE="clamav/clamav:latest"
+TS=$(date '+%Y-%m-%d %H:%M:%S')
+
+if [ ! -d "$TARGET" ]; then
+  echo "[$TS] ERROR: target not found: $TARGET" >&2
+  exit 1
+fi
+
+echo "[$TS] VibeCheck: updating ClamAV signatures..."
+docker run --rm -v clamav-db:/var/lib/clamav "$IMAGE" freshclam --quiet || true
+
+echo "[$TS] Scanning: $TARGET"
+RESULT=$(docker run --rm \
+  -v "$TARGET":/scan:ro \
+  -v clamav-db:/var/lib/clamav \
+  "$IMAGE" clamscan -r --infected --no-summary /scan 2>&1) || true
+
+INFECTED=$(echo "$RESULT" | grep -c "FOUND" || true)
+
+if [ "$INFECTED" -gt 0 ]; then
+  echo "[$TS] THREATS FOUND: $INFECTED"
+  echo "$RESULT" | grep "FOUND"
+  exit 1
+else
+  echo "[$TS] CLEAN — no threats detected"
+  exit 0
+fi

@@ -1,0 +1,23 @@
+name: vibecheck-dev
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3210:3210"
+    environment:
+      - PORT=3210
+      - SCAN_ROOT=/repos
+    volumes:
+      - clamav-db:/var/lib/clamav
+      - /path/to/your/repos:/repos:ro
+    labels:
+      - app_id=vibecheck
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://127.0.0.1:3210/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+volumes:
+  clamav-db:

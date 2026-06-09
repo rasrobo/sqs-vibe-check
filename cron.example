@@ -1,0 +1,18 @@
+# VibeCheck Cron Example
+# Add this to your crontab to scan /opt/git every 4 hours:
+# 0 */4 * * * /opt/vibecheck/vibecheck-scan /opt/git >> /var/log/vibecheck.log 2>&1
+
+# Or use a systemd timer:
+# [Unit]
+# Description=VibeCheck Malware Scan
+#
+# [Service]
+# Type=oneshot
+# ExecStart=/opt/vibecheck/vibecheck-scan /opt/git
+#
+# [Install]
+# WantedBy=multi-user.target
+
+# [Timer]
+# OnCalendar=*-*-* 00,04,08,12,16,20:00
+# Persistent=true
