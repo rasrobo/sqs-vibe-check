@@ -15,128 +15,220 @@
     .btn{padding:0.4rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:0.82rem;font-family:inherit}
     .btn-primary{background:#238636;color:#fff}
     .btn-primary:hover{background:#2ea043}
+    .btn-ghost{background:#21262d;color:#c9d1d9;border:1px solid #30363d}
+    .btn-ghost:hover{background:#30363d}
     .btn-danger{background:#da3633;color:#fff}
-    .btn-outline{background:transparent;color:#c9d1d9;border:1px solid #30363d}
-    .btn-outline:hover{background:#21262d}
     .btn-sm{padding:0.25rem 0.6rem;font-size:0.75rem}
     .badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.7rem}
     .badge-ok{background:#0d3320;color:#3fb950}
     .badge-warn{background:#3d1a1a;color:#f85149}
     .badge-pending{background:#1a1a2e;color:#d29922}
     pre{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:0.75rem;font-size:0.78rem;overflow-x:auto;margin-top:0.5rem;color:#8b949e}
-    input{padding:0.35rem 0.5rem;border-radius:4px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:0.82rem;width:100%}
-    select{padding:0.35rem;border-radius:4px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:0.82rem}
+    input,select{padding:0.35rem 0.5rem;border-radius:4px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:0.82rem;width:100%}
     label{font-size:0.82rem;display:flex;align-items:center;gap:0.35rem;cursor:pointer}
     .empty{text-align:center;padding:2rem;color:#484f58;font-size:0.85rem}
-    .inline-flex{display:flex;gap:0.5rem;align-items:center}
-    .grow{flex:1}
+    .inline-flex{display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap}
+    .inline-flex .grow{flex:1}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .hero{text-align:center;padding:2rem 0 1rem}
+    .hero h1{font-size:2rem}
+    .hero p{font-size:1rem;max-width:600px;margin:0.5rem auto 1.5rem}
+    .gh-btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.6rem 1.5rem;border-radius:8px;font-size:0.95rem;font-weight:600;background:#f0f6fc;color:#0d1117;border:none;cursor:pointer;text-decoration:none}
+    .gh-btn:hover{background:#fff}
+    .gh-btn img{width:20px;height:20px}
+    .toggle{position:relative;width:36px;height:20px;flex-shrink:0}
+    .toggle input{opacity:0;width:0;height:0}
+    .toggle .slider{position:absolute;inset:0;background:#30363d;border-radius:10px;cursor:pointer;transition:.2s}
+    .toggle .slider::before{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#c9d1d9;top:2px;left:2px;transition:.2s}
+    .toggle input:checked + .slider{background:#238636}
+    .toggle input:checked + .slider::before{left:18px}
+    hr{border:none;border-top:1px solid #21262d;margin:1rem 0}
     @media(max-width:600px){.grid-2{grid-template-columns:1fr};body{padding:1rem}}
   </style>
 </head>
 <body>
-  <h1>🛡️ VibeCheck</h1>
-  <p>Malware scanner for AI-generated and vibe-coded repositories. Powered by ClamAV.</p>
+  <!-- Hero / Connect GitHub -->
+  <div id="hero-section" class="hero">
+    <h1>🛡️ VibeCheck</h1>
+    <p>Scan AI-generated code before it ships. Connect GitHub once, then VibeCheck automatically scans every push and pull request for malware, suspicious files, and known threats.</p>
+    <div id="auth-section">
+      <a class="gh-btn" href="/api/auth/github/login">
+        <svg height="20" viewBox="0 0 16 16" fill="#0d1117"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Continue with GitHub
+      </a>
+      <p style="margin-top:0.75rem;font-size:0.75rem;color:#555">No PAT needed. We use a GitHub App for repo access + webhook-driven scans.</p>
+    </div>
+    <div id="user-section" style="display:none">
+      <div class="inline-flex" style="justify-content:center">
+        <img id="user-avatar" src="" style="width:32px;height:32px;border-radius:50%" />
+        <span id="user-login" style="font-weight:600"></span>
+        <button class="btn btn-sm btn-ghost" onclick="disconnect()">Disconnect</button>
+      </div>
+    </div>
+  </div>
 
-    <div class="grid-2">
+  <!-- Dashboard (shown after connect) -->
+  <div id="dashboard" style="display:none">
+
+    <!-- Protected Repos -->
     <div class="card">
-      <strong>Clone from GitHub</strong>
-      <p style="margin:0.35rem 0 0.5rem;font-size:0.78rem">Paste a GitHub URL — add a token for private repos (Settings → Developer settings → Personal access tokens → Fine-grained tokens).</p>
-      <div style="margin-bottom:0.35rem">
-        <input type="text" id="gh-url" placeholder="https://github.com/user/repo" style="width:100%" />
+      <div class="inline-flex" style="justify-content:space-between;margin-bottom:0.75rem">
+        <strong>Protected Repositories</strong>
+        <button class="btn btn-sm btn-ghost" onclick="installApp()">Add Repos</button>
       </div>
-      <div style="margin-bottom:0.35rem">
-        <input type="password" id="gh-token" placeholder="GitHub PAT (optional — for private repos)" style="width:100%;font-size:0.75rem" />
-      </div>
-      <div class="inline-flex">
-        <button class="btn btn-primary btn-sm" onclick="cloneRepo()">Clone & Scan</button>
-        <span id="clone-status" style="font-size:0.78rem"></span>
-      </div>
+      <div id="repo-list"><div class="empty">No repos protected yet. Click "Add Repos" to install the GitHub App on your repos.</div></div>
     </div>
 
+    <!-- Scan History -->
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-        <strong>Scan Local Repo</strong>
+      <div class="inline-flex" style="justify-content:space-between;margin-bottom:0.5rem">
+        <strong>Scan History</strong>
+        <button class="btn btn-sm btn-ghost" onclick="loadHistory()">Refresh</button>
       </div>
-      <div class="inline-flex">
-        <select id="repo-select" class="grow"><option value="">Select repo...</option></select>
-        <button class="btn btn-primary btn-sm" onclick="runScan()">Scan</button>
+      <div id="history-list"><div class="empty">No scans yet.</div></div>
+    </div>
+
+    <hr />
+
+    <!-- Manual scan (advanced) -->
+    <details style="margin-bottom:1rem">
+      <summary style="cursor:pointer;color:#8b949e;font-size:0.82rem">Ad-hoc scan (manual clone + PAT)</summary>
+      <div class="card" style="margin-top:0.5rem">
+        <div style="margin-bottom:0.35rem">
+          <input type="text" id="gh-url" placeholder="https://github.com/user/repo" />
+        </div>
+        <div style="margin-bottom:0.35rem">
+          <input type="password" id="gh-token" placeholder="GitHub PAT (optional, for private repos)" style="font-size:0.75rem" />
+        </div>
+        <div class="inline-flex">
+          <button class="btn btn-primary btn-sm" onclick="cloneRepo()">Clone & Scan</button>
+          <span id="clone-status" style="font-size:0.78rem"></span>
+        </div>
       </div>
-      <label style="margin-top:0.35rem"><input type="checkbox" id="tracked-only" checked /> Tracked files only</label>
-    </div>
-  </div>
+    </details>
 
-  <div id="results" class="card" style="display:none">
-    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
-      <strong>Results</strong>
-      <span id="scan-status" class="badge badge-pending">Pending</span>
-    </div>
-    <div id="scan-summary"></div>
-    <div id="scan-details"></div>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
-      <strong>Repos on Disk</strong>
-      <div class="inline-flex">
-        <button class="btn btn-sm btn-outline" onclick="loadRepos()">Refresh</button>
+    <!-- Local repos -->
+    <details>
+      <summary style="cursor:pointer;color:#8b949e;font-size:0.82rem">Local repos on disk</summary>
+      <div class="card" style="margin-top:0.5rem">
+        <div class="inline-flex" style="margin-bottom:0.5rem">
+          <select id="repo-select" class="grow"><option value="">Select repo...</option></select>
+          <button class="btn btn-primary btn-sm" onclick="runScan()">Scan</button>
+          <label><input type="checkbox" id="tracked-only" checked /> Tracked only</label>
+        </div>
+        <div id="local-repos"><div class="empty">No local repos.</div></div>
       </div>
-    </div>
-    <div id="repo-list"><div class="empty">No repos found.</div></div>
-  </div>
+    </details>
 
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
-      <strong>Scan History</strong>
-      <button class="btn btn-sm btn-outline" onclick="loadHistory()">Refresh</button>
+    <!-- Results -->
+    <div id="results" class="card" style="display:none">
+      <div class="inline-flex" style="justify-content:space-between;margin-bottom:0.5rem">
+        <strong>Results</strong>
+        <span id="scan-status" class="badge badge-pending">Pending</span>
+      </div>
+      <div id="scan-summary"></div>
+      <div id="scan-details"></div>
     </div>
-    <div id="history-list"><div class="empty">No scans yet.</div></div>
   </div>
 
   <script>
     let TOKEN = null;
 
-    async function auth() {
-      const r = await fetch('/api/auth/guest', { method: 'POST' });
-      const d = await r.json();
-      TOKEN = d.token;
+    function getToken() {
+      return TOKEN || localStorage.getItem('vibecheck_token') || document.cookie.replace(/(?:(?:^|.*;\s*)vibecheck_token\s*\=\s*([^;]*).*$)|^.*$/, '$1');
     }
 
     async function api(path, opts = {}) {
-      if (!TOKEN) await auth();
+      const token = getToken();
       const r = await fetch(path, {
         ...opts,
-        headers: { 'Content-Type': 'application/json', ...(TOKEN ? { 'Authorization': 'Bearer ' + TOKEN } : {}), ...(opts.headers || {}) }
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': 'Bearer ' + token } : {}), ...(opts.headers || {}) },
       });
-      if (r.status === 401) { TOKEN = null; await auth(); return api(path, opts); }
+      if (r.status === 401 && !token) {
+        // No token — use guest
+        const g = await fetch('/api/auth/guest', { method: 'POST' });
+        const d = await g.json();
+        TOKEN = d.token;
+        return api(path, opts);
+      }
       return r.json();
     }
 
-    async function loadRepos() {
-      const d = await api('/api/repos');
+    async function init() {
+      const token = getToken();
+      if (token) {
+        TOKEN = token;
+        const user = await api('/api/user');
+        if (user.connected) {
+          document.getElementById('auth-section').style.display = 'none';
+          document.getElementById('user-section').style.display = 'block';
+          document.getElementById('user-login').textContent = user.login;
+          document.getElementById('user-avatar').src = user.avatar_url;
+          document.getElementById('dashboard').style.display = 'block';
+          loadProtectedRepos();
+          loadHistory();
+          return;
+        }
+      }
+      // Check URL for OAuth callback (token in cookie)
+      const cookieToken = document.cookie.replace(/(?:(?:^|.*;\s*)vibecheck_token\s*\=\s*([^;]*).*$)|^.*$/, '$1');
+      if (cookieToken && cookieToken !== '') {
+        TOKEN = cookieToken;
+        localStorage.setItem('vibecheck_token', cookieToken);
+        location.reload();
+      }
+    }
+
+    function disconnect() {
+      localStorage.removeItem('vibecheck_token');
+      location.reload();
+    }
+
+    async function installApp() {
+      const d = await api('/api/github/app/install');
+      if (d.url) window.open(d.url, '_blank');
+    }
+
+    async function loadProtectedRepos() {
+      const d = await api('/api/repos/protected');
       const list = document.getElementById('repo-list');
-      const sel = document.getElementById('repo-select');
       if (!(d.repos || []).length) {
-        list.innerHTML = '<div class="empty">No repos found. Clone one from GitHub above.</div>';
-        sel.innerHTML = '<option value="">Select repo...</option>';
+        list.innerHTML = '<div class="empty">No repos protected yet. Click "Add Repos" to install the GitHub App.</div>';
         return;
       }
-      list.innerHTML = d.repos.map(r =>
-        '<div class="row">' +
-          '<span>📁 ' + r.name + '</span>' +
-          '<div class="inline-flex">' +
-            '<span style="font-size:0.75rem;color:#555">' + r.path.split('/').slice(0,-1).join('/') + '</span>' +
-            '<button class="btn btn-sm btn-outline" onclick="deleteRepo(\'' + r.name + '\')">Delete</button>' +
+      list.innerHTML = d.repos.map(r => {
+        const status = r.last_scan?.status === 'clean' ? '<span class="badge badge-ok">✓ Clean</span>' :
+                       r.last_scan?.status === 'infected' ? '<span class="badge badge-warn">⚠ Threats</span>' :
+                       '<span class="badge badge-pending">Pending</span>';
+        return '<div class="row">' +
+          '<span><strong>' + r.full_name + '</strong> ' + status + '</span>' +
+          '<div class="inline-flex" style="gap:0.3rem">' +
+            '<label class="toggle"><input type="checkbox" ' + (r.scan_on_push ? 'checked' : '') + ' onchange="toggleSetting(\'' + r.full_name + '\',\'scan_on_push\',this.checked)"><span class="slider"></span></label><span style="font-size:0.7rem">Push</span>' +
+            '<label class="toggle"><input type="checkbox" ' + (r.scan_on_pr ? 'checked' : '') + ' onchange="toggleSetting(\'' + r.full_name + '\',\'scan_on_pr\',this.checked)"><span class="slider"></span></label><span style="font-size:0.7rem">PR</span>' +
           '</div>' +
-        '</div>'
-      ).join('');
-      sel.innerHTML = '<option value="">Select repo...</option>';  
-      d.repos.forEach(r => {
-        const opt = document.createElement('option');
-        opt.value = r.path;
-        opt.textContent = r.name;
-        sel.appendChild(opt);
+        '</div>';
+      }).join('');
+    }
+
+    async function toggleSetting(repo, key, value) {
+      await api('/api/repos/protected/' + encodeURIComponent(repo), {
+        method: 'PATCH', body: JSON.stringify({ [key]: value }),
       });
+    }
+
+    async function loadHistory() {
+      const d = await api('/api/scans');
+      const list = document.getElementById('history-list');
+      if (!(d.scans || []).length) { list.innerHTML = '<div class="empty">No scans yet.</div>'; return; }
+      list.innerHTML = d.scans.slice(0, 20).map(s => {
+        const threats = (s.infected || []).length + (s.threats || []).length;
+        const icon = s.status === 'clean' ? '✅' : s.status === 'infected' ? '⚠️' : '⏳';
+        return '<div class="row">' +
+          '<span>' + (s.repo || (s.target || '').split('/').pop() || '?') + '</span>' +
+          '<span class="badge ' + (threats ? 'badge-warn' : 'badge-ok') + '">' + threats + ' threats</span>' +
+          '<span style="font-size:0.75rem;color:#555">' + (s.created_at ? new Date(s.created_at).toLocaleString() : '') + ' ' + icon + '</span>' +
+        '</div>';
+      }).join('');
     }
 
     async function cloneRepo() {
@@ -154,17 +246,29 @@
         status.style.color = '#3fb950';
         document.getElementById('gh-url').value = '';
         document.getElementById('gh-token').value = '';
-        loadRepos();
+        loadLocalRepos();
       } else {
         status.textContent = '❌ ' + (d.error || 'Failed');
         status.style.color = '#f85149';
       }
     }
 
-    async function deleteRepo(name) {
-      if (!confirm('Delete ' + name + '?')) return;
-      await api('/api/repos/' + encodeURIComponent(name), { method: 'DELETE' });
-      loadRepos();
+    async function loadLocalRepos() {
+      const d = await api('/api/repos');
+      const list = document.getElementById('local-repos');
+      const sel = document.getElementById('repo-select');
+      if (!(d.repos || []).length) {
+        list.innerHTML = '<div class="empty">No local repos.</div>';
+        sel.innerHTML = '<option value="">Select repo...</option>';
+        return;
+      }
+      list.innerHTML = d.repos.map(r => '<div class="row"><span>📁 ' + r.name + '</span></div>').join('');
+      sel.innerHTML = '<option value="">Select repo...</option>';
+      d.repos.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.path; opt.textContent = r.name;
+        sel.appendChild(opt);
+      });
     }
 
     async function runScan() {
@@ -176,44 +280,26 @@
       results.style.display = 'block';
       status.textContent = 'Scanning...';
       status.className = 'badge badge-pending';
-
-      const d = await api('/api/scan', {
-        method: 'POST',
-        body: JSON.stringify({ target, tracked_only: tracked })
-      });
-
+      const d = await api('/api/scan', { method: 'POST', body: JSON.stringify({ target, tracked_only: tracked }) });
       const poll = setInterval(async () => {
         const s = await api('/api/scan/' + d.scan_id);
         if (s.status === 'done') {
           clearInterval(poll);
-          status.textContent = s.infected.length + ' threats';
-          status.className = 'badge ' + (s.infected.length ? 'badge-warn' : 'badge-ok');
+          const threats = (s.infected || []).length;
+          status.textContent = threats + ' threats';
+          status.className = 'badge ' + (threats ? 'badge-warn' : 'badge-ok');
           document.getElementById('scan-summary').innerHTML =
             '<p style="font-size:0.85rem;margin-top:0.5rem">Scanned ' + (s.summary?.scanned || 0) + ' files · ' +
-            s.infected.length + ' infected · ' + (s.errors?.length || 0) + ' errors</p>';
+            threats + ' infected · ' + (s.errors?.length || 0) + ' errors</p>';
           document.getElementById('scan-details').innerHTML =
-            s.infected.length ? '<pre>' + s.infected.map(i => '⚠ ' + i.file + ' → ' + i.signature).join('\n') + '</pre>' :
+            threats ? '<pre>' + s.infected.map(i => '⚠ ' + i.file + ' → ' + i.signature).join('\n') + '</pre>' :
             '<p style="color:#3fb950;font-size:0.85rem">✅ Clean — no threats detected</p>';
           loadHistory();
         }
       }, 2000);
     }
 
-    async function loadHistory() {
-      const d = await api('/api/scans');
-      const list = document.getElementById('history-list');
-      if (!(d.scans || []).length) { list.innerHTML = '<div class="empty">No scans yet.</div>'; return; }
-      list.innerHTML = d.scans.slice(0, 20).map(s =>
-        '<div class="row">' +
-          '<span>' + (s.target || '').split('/').pop() + '</span>' +
-          '<span class="badge ' + (s.infected?.length ? 'badge-warn' : 'badge-ok') + '">' +
-            (s.infected?.length || 0) + ' threats</span>' +
-          '<span style="font-size:0.75rem;color:#555">' + (s.finished ? new Date(s.finished).toLocaleString() : '') + '</span>' +
-        '</div>'
-      ).join('');
-    }
-
-    auth().then(() => { loadRepos(); loadHistory(); });
+    init();
   </script>
 </body>
 </html>

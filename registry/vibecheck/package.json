@@ -1,7 +1,7 @@
 {
   "name": "vibecheck",
-  "version": "1.0.0",
-  "description": "Dockerized Git repo malware scanner for AI-generated code, powered by ClamAV",
+  "version": "2.0.0",
+  "description": "Malware safety layer for AI-generated code — GitHub-native: OAuth login, App installation, webhook-driven scans, PR checks",
   "main": "server.js",
   "scripts": { "start": "node server.js" },
   "dependencies": {
