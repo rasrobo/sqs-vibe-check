@@ -2,7 +2,7 @@
 
 > **Version:** 1.0.0  
 > **Repository:** [github.com/rasrobo/sqs-vibe-check](https://github.com/rasrobo/sqs-vibe-check)  
-> **Marketplace:** Installable as a one-click app on any Claw Way VPS  
+> **Marketplace:** Installable as a one-click app on any Docker host  
 > **Engine:** ClamAV (Cisco Talos, open source GPLv2)
 
 ---
@@ -101,11 +101,11 @@ docker compose up -d
 # UI at http://localhost:3210
 ```
 
-### Marketplace (Claw Way VPS)
+### Marketplace (any Docker host)
 
-1. Navigate to Apps in your Hub dashboard
+1. Navigate to your marketplace's app catalog
 2. Click Install on the VibeCheck card
-3. Visit `https://vibecheck.{claw}.sqs.chat`
+3. Visit `https://vibecheck.{host}.example.com`
 4. Paste a GitHub URL and scan
 
 ### CLI
@@ -133,7 +133,7 @@ curl -X POST https://vibecheck.host/api/auth/guest
 # → { "token": "eyJ...", "name": "Guest XXXX" }
 ```
 
-**SSO via claw_auth cookie** (when deployed in SQS Marketplace):
+**SSO via signed cookie** (when deployed behind a marketplace auth proxy):
 ```bash
 curl -H "Cookie: claw_auth=..." https://vibecheck.host/api/auth/session
 # → { "token": "eyJ...", "email": "...", "name": "..." }
@@ -227,7 +227,7 @@ The web UI is a single-page application with:
 ### Authentication
 
 - **Guest tokens** — auto-provisioned on first API call, stored in `localStorage`, valid 4h
-- **claw_auth SSO** — when deployed via SQS Marketplace, Caddy's forward_auth sets a JWT cookie that the app decodes
+- **Signed cookie SSO** — when deployed behind a marketplace auth proxy, Caddy/nginx sets a JWT cookie that the app decodes
 - **No passwords stored** — GitHub PATs are sent in the request body, not persisted
 
 ### Scan Isolation
@@ -274,7 +274,7 @@ The compose template needs:
 - `clamav-db` named volume (persists signatures across restarts)
 - `/opt/claw/git:/repos:ro` bind mount for persistent repo storage
 - `start_period: 90s` (freshclam first-run takes 60–90s)
-- Port 3210, `sqs.app_id=vibecheck` label
+- Port 3210, `app_id=vibecheck` label
 
 ### 7.3 Env Vars
 
@@ -289,15 +289,15 @@ NODE_ENV=production
 ### 7.4 Caddy Route
 
 ```caddy
-vibecheck.{claw}.sqs.chat {
+vibecheck.{host}.example.com {
   @api path /api/*
   handle @api {
     reverse_proxy app:3210
   }
   handle {
     reverse_proxy app:3210
-    @not_authed not header_regexp claw Cookie claw_auth=.+
-    redir @not_authed https://hub.sqs.chat/go/{claw}?returnTo={scheme}://{host}{uri}
+    @not_authed not header_regexp session Cookie session=.+
+    redir @not_authed https://marketplace.example.com/login?returnTo={scheme}://{host}{uri}
   }
 }
 ```
