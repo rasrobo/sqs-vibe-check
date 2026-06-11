@@ -15,7 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 const CLAW_SESSION_SECRET = process.env.CLAW_SESSION_SECRET || '';
 const SCAN_ROOT = process.env.SCAN_ROOT || '/repos';
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -55,6 +55,43 @@ app.get('/api/repos', requireAuth, (req, res) => {
       .map(d => ({ name: d.name, path: path.join(SCAN_ROOT, d.name) }));
     res.json({ repos: entries });
   } catch { res.json({ repos: [] }); }
+});
+
+app.post('/api/repos/clone', requireAuth, (req, res) => {
+  const { url, token } = req.body;
+  if (!url) return res.status(400).json({ error: 'GitHub URL required' });
+  if (!url.match(/^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+/))
+    return res.status(400).json({ error: 'Must be a valid GitHub URL' });
+
+  const name = url.replace(/\.git$/, '').split('/').slice(-2).join('-');
+  const dest = path.join(SCAN_ROOT, name);
+
+  if (fs.existsSync(dest))
+    return res.status(409).json({ error: 'Repo already cloned', path: dest });
+
+  // Use token for auth if provided (GitHub PAT — supports private repos)
+  let cloneUrl = url;
+  if (token) {
+    cloneUrl = url.replace('https://', `https://${token}@`);
+  }
+
+  try {
+    execSync(`git clone --depth 1 ${cloneUrl} ${dest}`, { timeout: 120000, stdio: 'pipe' });
+    res.json({ ok: true, name, path: dest });
+  } catch (e) {
+    const msg = e.stderr?.toString() || e.message;
+    res.status(500).json({ error: 'Clone failed: ' + msg.slice(0, 300) });
+  }
+});
+
+app.delete('/api/repos/:name', requireAuth, (req, res) => {
+  const target = path.join(SCAN_ROOT, req.params.name);
+  if (!target.startsWith(path.resolve(SCAN_ROOT)))
+    return res.status(400).json({ error: 'invalid path' });
+  try {
+    fs.rmSync(target, { recursive: true, force: true });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 const scanHistory = [];

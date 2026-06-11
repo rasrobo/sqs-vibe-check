@@ -16,31 +16,54 @@
     .btn-primary{background:#238636;color:#fff}
     .btn-primary:hover{background:#2ea043}
     .btn-danger{background:#da3633;color:#fff}
+    .btn-outline{background:transparent;color:#c9d1d9;border:1px solid #30363d}
+    .btn-outline:hover{background:#21262d}
     .btn-sm{padding:0.25rem 0.6rem;font-size:0.75rem}
     .badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:10px;font-size:0.7rem}
     .badge-ok{background:#0d3320;color:#3fb950}
     .badge-warn{background:#3d1a1a;color:#f85149}
     .badge-pending{background:#1a1a2e;color:#d29922}
     pre{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:0.75rem;font-size:0.78rem;overflow-x:auto;margin-top:0.5rem;color:#8b949e}
+    input{padding:0.35rem 0.5rem;border-radius:4px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:0.82rem;width:100%}
     select{padding:0.35rem;border-radius:4px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:0.82rem}
     label{font-size:0.82rem;display:flex;align-items:center;gap:0.35rem;cursor:pointer}
     .empty{text-align:center;padding:2rem;color:#484f58;font-size:0.85rem}
-    @media(max-width:600px){body{padding:1rem}}
+    .inline-flex{display:flex;gap:0.5rem;align-items:center}
+    .grow{flex:1}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media(max-width:600px){.grid-2{grid-template-columns:1fr};body{padding:1rem}}
   </style>
 </head>
 <body>
   <h1>🛡️ VibeCheck</h1>
   <p>Malware scanner for AI-generated and vibe-coded repositories. Powered by ClamAV.</p>
 
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
-      <strong>Scan a Repository</strong>
-      <div style="display:flex;gap:0.5rem;align-items:center">
-        <select id="repo-select"><option value="">Select repo...</option></select>
-        <button class="btn btn-primary btn-sm" onclick="runScan()">Scan</button>
+    <div class="grid-2">
+    <div class="card">
+      <strong>Clone from GitHub</strong>
+      <p style="margin:0.35rem 0 0.5rem;font-size:0.78rem">Paste a GitHub URL — add a token for private repos (Settings → Developer settings → Personal access tokens → Fine-grained tokens).</p>
+      <div style="margin-bottom:0.35rem">
+        <input type="text" id="gh-url" placeholder="https://github.com/user/repo" style="width:100%" />
+      </div>
+      <div style="margin-bottom:0.35rem">
+        <input type="password" id="gh-token" placeholder="GitHub PAT (optional — for private repos)" style="width:100%;font-size:0.75rem" />
+      </div>
+      <div class="inline-flex">
+        <button class="btn btn-primary btn-sm" onclick="cloneRepo()">Clone & Scan</button>
+        <span id="clone-status" style="font-size:0.78rem"></span>
       </div>
     </div>
-    <label><input type="checkbox" id="tracked-only" checked /> Tracked files only (skip node_modules, .git, etc.)</label>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+        <strong>Scan Local Repo</strong>
+      </div>
+      <div class="inline-flex">
+        <select id="repo-select" class="grow"><option value="">Select repo...</option></select>
+        <button class="btn btn-primary btn-sm" onclick="runScan()">Scan</button>
+      </div>
+      <label style="margin-top:0.35rem"><input type="checkbox" id="tracked-only" checked /> Tracked files only</label>
+    </div>
   </div>
 
   <div id="results" class="card" style="display:none">
@@ -54,8 +77,18 @@
 
   <div class="card">
     <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+      <strong>Repos on Disk</strong>
+      <div class="inline-flex">
+        <button class="btn btn-sm btn-outline" onclick="loadRepos()">Refresh</button>
+      </div>
+    </div>
+    <div id="repo-list"><div class="empty">No repos found.</div></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
       <strong>Scan History</strong>
-      <button class="btn btn-sm" onclick="loadHistory()">Refresh</button>
+      <button class="btn btn-sm btn-outline" onclick="loadHistory()">Refresh</button>
     </div>
     <div id="history-list"><div class="empty">No scans yet.</div></div>
   </div>
@@ -80,16 +113,58 @@
     }
 
     async function loadRepos() {
-      const sel = document.getElementById('repo-select');
-      sel.innerHTML = '<option value="">Loading...</option>';
       const d = await api('/api/repos');
-      sel.innerHTML = '<option value="">Select repo...</option>';
-      (d.repos || []).forEach(r => {
+      const list = document.getElementById('repo-list');
+      const sel = document.getElementById('repo-select');
+      if (!(d.repos || []).length) {
+        list.innerHTML = '<div class="empty">No repos found. Clone one from GitHub above.</div>';
+        sel.innerHTML = '<option value="">Select repo...</option>';
+        return;
+      }
+      list.innerHTML = d.repos.map(r =>
+        '<div class="row">' +
+          '<span>📁 ' + r.name + '</span>' +
+          '<div class="inline-flex">' +
+            '<span style="font-size:0.75rem;color:#555">' + r.path.split('/').slice(0,-1).join('/') + '</span>' +
+            '<button class="btn btn-sm btn-outline" onclick="deleteRepo(\'' + r.name + '\')">Delete</button>' +
+          '</div>' +
+        '</div>'
+      ).join('');
+      sel.innerHTML = '<option value="">Select repo...</option>';  
+      d.repos.forEach(r => {
         const opt = document.createElement('option');
         opt.value = r.path;
         opt.textContent = r.name;
         sel.appendChild(opt);
       });
+    }
+
+    async function cloneRepo() {
+      const url = document.getElementById('gh-url').value.trim();
+      if (!url) return;
+      const token = document.getElementById('gh-token').value.trim();
+      const status = document.getElementById('clone-status');
+      status.textContent = 'Cloning...';
+      status.style.color = '#d29922';
+      const body = { url };
+      if (token) body.token = token;
+      const d = await api('/api/repos/clone', { method: 'POST', body: JSON.stringify(body) });
+      if (d.ok) {
+        status.textContent = '✅ Cloned as ' + d.name;
+        status.style.color = '#3fb950';
+        document.getElementById('gh-url').value = '';
+        document.getElementById('gh-token').value = '';
+        loadRepos();
+      } else {
+        status.textContent = '❌ ' + (d.error || 'Failed');
+        status.style.color = '#f85149';
+      }
+    }
+
+    async function deleteRepo(name) {
+      if (!confirm('Delete ' + name + '?')) return;
+      await api('/api/repos/' + encodeURIComponent(name), { method: 'DELETE' });
+      loadRepos();
     }
 
     async function runScan() {
@@ -107,7 +182,6 @@
         body: JSON.stringify({ target, tracked_only: tracked })
       });
 
-      // Poll for results
       const poll = setInterval(async () => {
         const s = await api('/api/scan/' + d.scan_id);
         if (s.status === 'done') {
@@ -118,7 +192,8 @@
             '<p style="font-size:0.85rem;margin-top:0.5rem">Scanned ' + (s.summary?.scanned || 0) + ' files · ' +
             s.infected.length + ' infected · ' + (s.errors?.length || 0) + ' errors</p>';
           document.getElementById('scan-details').innerHTML =
-            s.infected.length ? '<pre>' + s.infected.map(i => '⚠ ' + i.file + ' → ' + i.signature).join('\n') + '</pre>' : '';
+            s.infected.length ? '<pre>' + s.infected.map(i => '⚠ ' + i.file + ' → ' + i.signature).join('\n') + '</pre>' :
+            '<p style="color:#3fb950;font-size:0.85rem">✅ Clean — no threats detected</p>';
           loadHistory();
         }
       }, 2000);
@@ -128,7 +203,7 @@
       const d = await api('/api/scans');
       const list = document.getElementById('history-list');
       if (!(d.scans || []).length) { list.innerHTML = '<div class="empty">No scans yet.</div>'; return; }
-      list.innerHTML = d.scans.map(s =>
+      list.innerHTML = d.scans.slice(0, 20).map(s =>
         '<div class="row">' +
           '<span>' + (s.target || '').split('/').pop() + '</span>' +
           '<span class="badge ' + (s.infected?.length ? 'badge-warn' : 'badge-ok') + '">' +
