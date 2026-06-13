@@ -3,6 +3,8 @@
 > Malware and virus scanning for AI-generated and vibe-coded repositories.
 > Before you ship what the LLM wrote — run a VibeCheck.
 
+**What's in it for you:** AI-generated code can hide malware, backdoors, and crypto miners in plain sight. VibeCheck scans your entire repo with ClamAV before you deploy — catch the supply chain attack that your code review missed. Run it in CI/CD, as a pre-commit hook, or ad-hoc on any repo.
+
 VibeCheck is an open-source Dockerized malware scanner for Git repositories
 and source trees, powered by **ClamAV** — the open-source antivirus engine
 maintained by Cisco Talos. Run it standalone from the CLI, integrate into CI/CD,
