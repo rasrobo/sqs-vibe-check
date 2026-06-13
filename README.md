@@ -57,3 +57,11 @@ docker compose up -d
 ## License
 
 MIT — the underlying ClamAV engine is GPLv2 (Cisco Talos).
+
+---
+
+Built by [Side Quest Studios](https://sidequeststudios.xyz)
+
+If you find this project useful, consider [supporting development on Ko-fi](https://ko-fi.com/sidequeststudios).
+
+*Keywords: malware scanner, ClamAV Docker, repo security, vibe coding, CI/CD security scanning, open-source antivirus*
